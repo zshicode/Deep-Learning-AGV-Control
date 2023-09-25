@@ -4,7 +4,7 @@ Automated-guided vehicles (AGV) is widely used for robotics and intelligent manu
 
 Inspired by our previous work *Incorporating Transformer and LSTM to Kalman Filter with EM algorithm for state estimation* (see following paper and GitHub link), this repository combines deep learning models, Transformer and LSTM, for KF in LQG. EM-KF adopts expectation maximization (EM) algorithm for parameters estimation before Kalman filtering. This repository utilizes EM-KF to estimate the feedback matrix of LQR controller, instead of classical Ricatti equation-based LQR. 
 
-Please refer to the [notes](./notes.pdf) of this repository for implementation analysis and details.
+This repository proposes kinematic simulations on path tracking in both cartesian and polar coordinate, and furthermore proposes simulation about mechanics. Please refer to the [notes](./notes.pdf) of this repository for implementation analysis and details.
 
 Paper link: https://arxiv.org/abs/2105.00250
 
@@ -35,8 +35,10 @@ model = 'T'
 # T: Transformer, L: LSTM, TL: Transformer-LSTM, else: EM-KF
 coord = 'C'
 # C: cartesian (3-DOF), P: polar (2-DOF)
+scene = 'K'
+# K: kinematics, M: mechanics
 vc = 1
 xcoord0 = 1
 ycoord0 = 1
-theta0 = np.pi/6
+theta0 = np.pi/12
 ```

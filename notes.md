@@ -42,10 +42,13 @@ Then, Kalman filter is performed iteratively by maximizing $p(x(k+1)|y(k),x(k))$
 Inspired by our previous work [Incorporating Transformer and LSTM to Kalman Filter with EM algorithm for state estimation](https://arxiv.org/abs/2105.00250) (Fig. 1), this repository combines deep learning models, Transformer and LSTM, for KF in LQG. 
 
 ```mermaid
-flowchart LR
+flowchart TB    
     n1(Transformer encoder)-->n2(Transformer decoder);
     n2-->n3(LSTM encoder);
     n3-->n4(EM-KF decoder)
+    n5(Feature extraction from noised observation)-->n6(Transformer for local features);
+    n6-->n7(LSTM for global features);
+    n7-->n8(EM for parameter estimation\n KF for state estimation)
 ```
 
 Fig.1 Deep learning-based KF
@@ -132,9 +135,9 @@ $$\begin{pmatrix}
 
 Using Taylor expansion
 
-$$y=\sqrt{x_1^2+x_2^2}=\sqrt{x_{10}^2+x_{20}^2}+\frac{x_{10}}{\sqrt{x_{10}^2+x_{20}^2}} (x_1-x_{10})+\frac{x_{20}}{\sqrt{x_{10}^2+x_{20}^2}}(x_2-x_{20}).$$
+$$y=\sqrt{x_1^2+x_2^2}=\sqrt{x_{10}^2+x_{20}^2}+\cos\theta_0 (x_1-x_{10})+\sin\theta_0(x_2-x_{20}),$$
 
-Using 
+where 
 
 $$\cos\theta_0=\frac{x_{10}}{\sqrt{x_{10}^2+x_{20}^2}},\sin\theta_0=\frac{x_{20}}{\sqrt{x_{10}^2+x_{20}^2}},$$
 
@@ -160,4 +163,72 @@ $$\dot x=v\sin\theta, \dot\theta=\omega\Rightarrow \begin{pmatrix}
 
 $$y=\begin{pmatrix}1 &0\end{pmatrix}\begin{pmatrix}
         x\\ \theta
+    \end{pmatrix}.$$
+
+### Lagrangian mechanics in robotics
+
+Lagrangian mechanics defines the Lagrangian $\mathcal L$ as a function of generalized coordinates q describing the complete dynamics of a given system.
+
+$$\mathcal L = T−V=\frac{1}{2}\dot q^TM(q)\dot q-V(q),$$
+
+where T is the kinetic energy and V is the potential energy. M is the inertia matrix. The Euler-Lagrange equation is adopted.
+
+$$\frac{d}{dt}\frac{\partial\mathcal L}{\partial\dot q}-\frac{\partial\mathcal L}{\partial q}=\tau,$$
+
+where $\tau$ is generalized force. Hence
+
+$$M(q)\ddot q+\dot M(q)\dot q-\frac{1}{2}\frac{\partial\dot q^TM(q)\dot q}{\partial q}-\frac{\partial V}{\partial q}=\tau.$$
+
+Let Centripetal and Coriolis forces c and gravity g denote
+
+$$c(q,\dot q)=\dot M(q)\dot q-\frac{1}{2}\frac{\partial\dot q^TM(q)\dot q}{\partial q},g(q)=-\frac{\partial V}{\partial q},$$
+
+then
+
+$$M(q)\ddot q+c(q,\dot q)+g(q)=\tau.$$
+
+[Deep Lagrangian Networks: Using Physics as Model Prior for Deep Learning](https://arxiv.org/abs/1907.04490v1) proposes Deep Lagrangian Networks (DeLaN) as a deep network structure for estimating parameters in Lagrangian Mechanics. Inspired by this work, this repository can also be adopted for mechanics modeling of AGV.
+
+### Cart-pole as AGV mechanics
+
+Cart-pole describes a classical control question by modeling inverted pendulum mechanics. This question is also widely applied for benchmarking reinforcement learning algorithms. (See classic control enviroments in [Gym](https://www.gymlibrary.dev/) library for details.) The pendulum is assumed to consist of rigid rod of length 2L (Fig. 3a), or a point mass m affixed to the end of a massless rigid rod of length L (Fig. 3b). The moment of inertia
+
+$$I_a=\int_0^{2L}\frac{m}{2L}r^2dr=\frac{4}{3}mL^2,I_b=mL^2.$$
+
+![](cartpole.png)
+
+Fig. 3 Cart-pole
+
+Let $\theta$ denotes the angle of the pendulum with respect to the vertical direction, cart mass M moves at position x, and F denotes control force in the x-direction.
+
+$$T_M=\frac{1}{2}M\dot x^2, T_m=\frac{1}{2}m(v_x^2+v_y^2)+\frac{1}{2}I\dot\theta^2, V=mgL\cos\theta.$$
+
+$$v_x=\dot x-L\dot\theta\cos\theta, v_y=L\dot\theta\sin\theta.$$
+
+$$\frac{d}{dt}\frac{\partial\mathcal L}{\partial\dot x}-\frac{\partial\mathcal L}{\partial x}={\displaystyle \left(M+m\right){\ddot {x}}-mL {\ddot {\theta }}\cos \theta +mL {\dot {\theta }}^{2}\sin \theta =F}.$$
+
+$$\frac{d}{dt}\frac{\partial\mathcal L}{\partial\dot \theta}-\frac{\partial\mathcal L}{\partial \theta}=(I+mL^2) {\ddot {\theta }}-mL{\ddot {x}}\cos \theta-mgL\sin \theta =0.$$
+
+Using $\cos\theta\approx 1,\sin\theta\approx\theta, \dot\theta^2\approx 0$,
+
+$$(M+m)\ddot x-mL\ddot\theta=F,(I+mL^2)\ddot\theta-mL\ddot x-mgL\theta=0.$$
+
+Set x as observation.
+
+$$\begin{pmatrix}
+        \dot x\\\ddot x\\ \dot\theta\\\ddot\theta
+    \end{pmatrix}=\begin{pmatrix}
+        0 & 1 & 0 & 0\\0 & 0 & \frac{m^2gL^2}{p} & 0 \\0 & 0 & 0 & 1\\ 0 & 0 & \frac{mgL(M+m)}{p} & 0
+    \end{pmatrix}\begin{pmatrix}
+        x\\\dot x\\\theta\\\dot\theta
+    \end{pmatrix}+\begin{pmatrix}
+        0\\\frac{I+mL^2}{p}\\0\\\frac{mL}{p}
+    \end{pmatrix}F,$$
+
+where $p=I(M+m)+mML^2$,
+
+$$y=\begin{pmatrix}
+        1 & 0 & 0 & 0
+    \end{pmatrix}\begin{pmatrix}
+        x\\\dot x\\\theta\\\dot\theta
     \end{pmatrix}.$$

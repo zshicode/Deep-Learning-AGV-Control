@@ -17,10 +17,12 @@ model = 'T'
 # T: Transformer, L: LSTM, TL: Transformer-LSTM, else: EM-KF
 coord = 'C'
 # C: cartesian (3-DOF), P: polar (2-DOF)
+scene = 'K'
+# K: kinematics, M: mechanics
 vc = 1
 xcoord0 = 1
 ycoord0 = 1
-theta0 = np.pi/6
+theta0 = np.pi/12
 
 def lqr(A,B,Q,R):
     RI = np.linalg.inv(R)
@@ -56,24 +58,41 @@ def pseudolqr(A,B,Q,R):
 '''
 Step 1: Provide actual system
 '''
-
-if coord == 'C':
-    A = np.array([[0,0,0],
-        [ 0, 0, vc],
-        [ 0, 0, 0]])
-    B = np.array([[0], [0], [1]])
-    m0 = np.array([xcoord0,ycoord0,theta0])
-    C = np.array([np.cos(theta0),np.sin(theta0),0])
-    D = np.linalg.norm(m0[:2])-np.inner([np.cos(theta0),np.sin(theta0)],m0[:2])
-    B0 = np.array([T,0,0])
-else:
-    A = np.array([[0,vc],
-        [ 0, 0]])
-    B = np.array([[0], [1]])
-    m0 = np.array([0,theta0])
-    C = np.array([1,0])
+if scene == 'M':
+    pole = 0.1
+    cart = 1.0
+    g = 9.8
+    L = 0.5
+    inertia = 1.33*pole*L*L
+    force = 1
+    ptr = inertia*(cart+pole)+pole*cart*L*L
+    A = np.array([[0,1,0,0],
+            [ 0, 0, pole*pole*g*L*L/ptr, 0],
+            [ 0, 0, 0, 1],
+            [0, 0, pole*g*L*(pole+cart)/ptr, 0]])
+    B = np.array([[0], [(inertia+pole*L*L)*force/ptr], [0], [pole*L*force/ptr]])
+    m0 = np.array([xcoord0,vc,theta0,0])
+    C = np.array([1,0,0,0])
     D = 0
-    B0 = np.array([0,0])
+    B0 = np.array([0,0,0,0])
+else:
+    if coord == 'C':
+        A = np.array([[0,0,0],
+            [ 0, 0, vc],
+            [ 0, 0, 0]])
+        B = np.array([[0], [0], [1]])
+        m0 = np.array([xcoord0,ycoord0,theta0])
+        C = np.array([np.cos(theta0),np.sin(theta0),0])
+        D = np.linalg.norm(m0[:2])-np.inner([np.cos(theta0),np.sin(theta0)],m0[:2])
+        B0 = np.array([T,0,0])
+    else:
+        A = np.array([[0,vc],
+            [ 0, 0]])
+        B = np.array([[0], [1]])
+        m0 = np.array([0,theta0])
+        C = np.array([1,0])
+        D = 0
+        B0 = np.array([0,0])
 
 sigma2 = np.power(0.03,2)
 num_state = B.shape[0]
@@ -221,20 +240,21 @@ def path(state,x0,y0,theta0):
         
         return xl,yl,tl
 
-# draw path for agv
-plt.figure()
-tx,ty,tt = path(state,xcoord0,ycoord0,theta0)
-fx,fy,ft = path(filtered_state_estimater,xcoord0,ycoord0,theta0)
-sx,sy,st = path(smoothed_state_estimater,xcoord0,ycoord0,theta0)
-fsx,fsy,fst = path(filtered_state_estimates,xcoord0,ycoord0,theta0)
-ssx,ssy,sst = path(smoothed_state_estimates,xcoord0,ycoord0,theta0)
-plt.plot(tx,ty, color='c',label='True')
-plt.plot(fx,fy, 'r',label='KF')
-plt.plot(sx,sy, 'r--',label='KS')
-plt.plot(fsx,fsy, 'b',label=labelfilter)
-plt.plot(ssx,ssy, 'b--',label=labelsmooth)
-plt.xlabel(r'$x_1$/m')
-plt.ylabel(r'$x_2$/m')
-plt.legend()
-plt.grid()
-plt.show()
+if scene != 'M':
+    # draw path for agv
+    plt.figure()
+    tx,ty,tt = path(state,xcoord0,ycoord0,theta0)
+    fx,fy,ft = path(filtered_state_estimater,xcoord0,ycoord0,theta0)
+    sx,sy,st = path(smoothed_state_estimater,xcoord0,ycoord0,theta0)
+    fsx,fsy,fst = path(filtered_state_estimates,xcoord0,ycoord0,theta0)
+    ssx,ssy,sst = path(smoothed_state_estimates,xcoord0,ycoord0,theta0)
+    plt.plot(tx,ty, color='c',label='True')
+    plt.plot(fx,fy, 'r',label='KF')
+    plt.plot(sx,sy, 'r--',label='KS')
+    plt.plot(fsx,fsy, 'b',label=labelfilter)
+    plt.plot(ssx,ssy, 'b--',label=labelsmooth)
+    plt.xlabel(r'$x_1$/m')
+    plt.ylabel(r'$x_2$/m')
+    plt.legend()
+    plt.grid()
+    plt.show()
